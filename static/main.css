@@ -13,32 +13,26 @@ body {
         transparent 1px,
         transparent 3px
     );
-    /* Add padding to the top to prevent content from hiding under the fixed navbar */
     padding-top: 80px; 
 }
 
 /* --- Floating Navbar --- */
 .navbar {
-    position: fixed; /* Fixes the navbar to the top */
+    position: fixed;
     top: 0;
     width: 100%;
     z-index: 1000;
-    background-color: rgba(10, 25, 47, 0.85); /* Semi-transparent background */
-    backdrop-filter: blur(8px); /* Frosted glass effect */
+    background-color: rgba(10, 25, 47, 0.85);
+    backdrop-filter: blur(8px);
     border-bottom: 1px solid rgba(0, 255, 255, 0.5);
     box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
 }
-
 .navbar-brand {
     font-family: 'Orbitron', sans-serif;
-    color: #ff00ff !important; /* Use !important to override Bootstrap's default */
+    color: #ff00ff !important;
     text-shadow: 0 0 5px #ff00ff;
     transition: all 0.3s ease;
 }
-.navbar-brand:hover {
-    text-shadow: 0 0 15px #ff00ff;
-}
-
 .nav-link {
     color: #00ffff !important;
     font-family: 'Share Tech Mono', monospace;
@@ -52,34 +46,12 @@ body {
 /* --- General Content & Typography --- */
 h1, h2, h3 {
     font-family: 'Orbitron', sans-serif;
-    color: #ff00ff; /* Neon magenta */
+    color: #ff00ff;
     text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff;
     letter-spacing: 1px;
 }
 
-p.lead {
-    color: #c0c0c0;
-    font-size: 1.2rem;
-}
-
-/* --- Reusable Content Box (for forms, data panels, etc.) --- */
-.content-box {
-    background-color: rgba(10, 25, 47, 0.8);
-    border: 2px solid #00ffff; /* Neon cyan border */
-    padding: 40px;
-    box-shadow: 0 0 15px rgba(0, 255, 255, 0.4), 0 0 5px rgba(0, 255, 255, 0.6) inset;
-    clip-path: polygon(0% 15px, 15px 0%, 100% 0%, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0% 100%);
-}
-
-/* --- Utility Class (for centering content like the login form) --- */
-.center-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: calc(100vh - 80px); /* Full height minus navbar padding */
-}
-
-/* --- Form & Button Styles (from your original file) --- */
+/* --- Form & Button Styles --- */
 .form-label {
     color: #00ffff;
     font-weight: bold;
@@ -100,30 +72,122 @@ p.lead {
     color: #fff;
     box-shadow: 0 0 10px rgba(255, 0, 255, 0.7);
 }
-.btn {
-    border-radius: 0;
-    font-family: 'Orbitron', sans-serif;
-    letter-spacing: 1px;
-    font-weight: bold;
-    padding: 10px 20px;
-    transition: all 0.3s ease;
-}
-.btn-primary {
+.form-select {
     background-color: transparent;
     border: 2px solid #00ffff;
-    color: #00ffff;
+    color: #e0e0e0;
+    font-family: 'Share Tech Mono', monospace;
     box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
 }
-.btn-primary:hover {
-    background-color: #00ffff;
-    color: #0a0a14;
-    box-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+.form-select:focus {
+    border-color: #ff00ff;
+    box-shadow: 0 0 10px rgba(255, 0, 255, 0.7);
 }
-.btn-link {
-    color: #ff00ff;
-    text-decoration: none;
+.form-select option {
+    background-color: #0a0a14;
 }
-.btn-link:hover {
+
+/* --- Glowing Dial Display --- */
+.dial-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+.dial-title {
+    font-size: 1.8rem;
+    margin-bottom: 10px;
+}
+.dial {
+    --angle: 90deg;
+    --dial-size: 160px;
+    --glow-color: #00ffff;
+    --track-color: #444; /* Changed from your #2bff00 for better contrast, but feel free to change it back */
+    position: relative;
+    width: var(--dial-size);
+    height: var(--dial-size);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-image:
+        conic-gradient(from 0deg, var(--glow-color) 0deg, var(--glow-color) var(--angle), transparent var(--angle), transparent 360deg),
+        repeating-conic-gradient(from 0deg, var(--track-color) 0deg 2deg, transparent 2deg 10deg);
+    filter: drop-shadow(0 0 8px var(--glow-color)) drop-shadow(0 0 15px var(--glow-color));
+}
+.dial::before {
+    content: '';
+    position: absolute;
+    width: calc(var(--dial-size) * 0.8);
+    height: calc(var(--dial-size) * 0.8);
+    background: #0a0a14;
+    border-radius: 50%;
+}
+.dial-value {
+    position: relative;
+    z-index: 1;
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #e0e0e0;
+}
+
+/* Unique color for each dial type */
+.dial-container.dial-voltage { --glow-color: #00ffff; } /* Cyan */
+.dial-container.dial-current { --glow-color: #ff00ff; } /* Magenta */
+.dial-container.dial-power { --glow-color: #fbc531; }   /* Yellow */
+
+/* --- Glowing Warning Indicator Styles --- */
+.warning-indicator {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background-color: rgba(76, 175, 80, 0.15);
+    border: 1px solid #2e7d32;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    box-shadow: 0 0 5px rgba(76, 175, 80, 0.4);
+    transition: all 0.4s ease;
+}
+.warning-icon {
+    font-size: 1.8rem;
+    color: #4caf50;
+    text-shadow: 0 0 3px rgba(76, 175, 80, 0.6);
+    transition: all 0.4s ease;
+}
+.warning-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.2rem;
+    color: #8bc34a;
+    transition: all 0.4s ease;
+}
+.warning-indicator.active {
+    background-color: rgba(244, 67, 54, 0.15);
+    border-color: #f44336;
+    box-shadow: 0 0 20px rgba(244, 67, 54, 0.8);
+    animation: pulse-alert 1.5s infinite;
+}
+.warning-indicator.active .warning-icon {
+    color: #f44336;
+    text-shadow: 0 0 12px #f44336;
+}
+.warning-indicator.active .warning-label {
     color: #fff;
-    text-shadow: 0 0 5px #ff00ff;
+}
+@keyframes pulse-alert {
+    0% { box-shadow: 0 0 15px rgba(244, 67, 54, 0.6); }
+    50% { box-shadow: 0 0 30px rgba(244, 67, 54, 1); }
+    100% { box-shadow: 0 0 15px rgba(244, 67, 54, 0.6); }
+}
+
+/* --- Chart Container Style --- */
+.chart-container {
+    position: relative;
+    height: 60vh;
+    background-color: rgba(10, 25, 47, 0.8);
+    border: 2px solid #00ffff;
+    padding: 20px;
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.4), 0 0 5px rgba(0, 255, 255, 0.6) inset;
+    clip-path: polygon(0% 15px, 15px 0%, 100% 0%, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0% 100%);
 }

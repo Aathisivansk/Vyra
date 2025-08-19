@@ -1,11 +1,136 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard | IDEAS IOT{% endblock %}
+{% block title %}Motor Dashboard | IDEAS IOT{% endblock %}
 
 {% block content %}
-    <div class="text-center p-5">
-        <h1>Welcome, {{ username }}!</h1>
-        <p class="lead">You are now logged in.</p>
-        
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <label for="motorSelector" class="form-label">Select Motor</label>
+            <select id="motorSelector" class="form-select">
+                {% if motors %}
+                    {% for motor in motors %}
+                    <option value="{{ motor }}">{{ motor }}</option>
+                    {% endfor %}
+                {% else %}
+                    <option disabled>No Motors Found</option>
+                {% endif %}
+            </select>
         </div>
+    </div>
+
+    <div id="motorDataDisplay" class="row">
+        {% if data %}
+        <div class="col-lg-8">
+            <div class="row text-center">
+                <div class="col-md-4">
+                    <div class="dial-container dial-voltage">
+                        <h2 class="dial-title">Voltage ⚡</h2>
+                        <div id="voltageDial" class="dial" style="--angle: {{ (data.voltage / max_voltage) * 360 }}deg;">
+                            <div id="voltageValue" class="dial-value">{{ "%.1f"|format(data.voltage) }} V</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="dial-container dial-current">
+                        <h2 class="dial-title">Current 💡</h2>
+                        <div id="currentDial" class="dial" style="--angle: {{ (data.current / max_current) * 360 }}deg;">
+                            <div id="currentValue" class="dial-value">{{ "%.2f"|format(data.current) }} A</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="dial-container dial-power">
+                        <h2 class="dial-title">Power 🔋</h2>
+                        <div id="powerDial" class="dial" style="--angle: {{ (data.power / max_power) * 360 }}deg;">
+                            <div id="powerValue" class="dial-value">{{ "%.0f"|format(data.power) }} W</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 d-flex flex-column justify-content-center mt-4 mt-lg-0">
+            <div id="overVoltageWarning" class="warning-indicator {% if data.over_voltage %}active{% endif %}">
+                <span class="warning-icon">⚠️</span>
+                <span class="warning-label">Over Voltage</span>
+            </div>
+            <div id="overLoadWarning" class="warning-indicator {% if data.over_load_details %}active{% endif %}">
+                <span class="warning-icon">⚠️</span>
+                <span class="warning-label">Overload</span>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+            <h3 class="text-center text-muted">Awaiting data from simulator...</h3>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const motorSelector = document.getElementById('motorSelector');
+    // Early exit if the selector isn't on the page
+    if (!motorSelector) return;
+    
+    function fetchAndUpdateDashboard() {
+        const motorId = motorSelector.value;
+        if (!motorId) return; // Don't fetch if no motor is selected
+
+        fetch(`/api/motor_data/${motorId}`)
+            .then(response => {
+                // Check if the server response is OK (e.g., status 200).
+                // If not (e.g., a 404 error), stop and reject the promise.
+                if (!response.ok) {
+                    return Promise.reject(`API returned an error: ${response.statusText}`);
+                }
+                // If the response is OK, parse it as JSON.
+                return response.json();
+            })
+            .then(data => {
+                // This code will ONLY run if the fetch was successful.
+                const voltageValueEl = document.getElementById('voltageValue');
+                const currentValueEl = document.getElementById('currentValue');
+                const powerValueEl = document.getElementById('powerValue');
+                const voltageDialEl = document.getElementById('voltageDial');
+                const currentDialEl = document.getElementById('currentDial');
+                const powerDialEl = document.getElementById('powerDial');
+                const overVoltageWarningEl = document.getElementById('overVoltageWarning');
+                const overLoadWarningEl = document.getElementById('overLoadWarning');
+
+                // Check if all elements exist before trying to update them
+                if (voltageValueEl && currentValueEl && powerValueEl && voltageDialEl && currentDialEl && powerDialEl && overVoltageWarningEl && overLoadWarningEl) {
+                    voltageValueEl.textContent = `${data.voltage.toFixed(1)} V`;
+                    currentValueEl.textContent = `${data.current.toFixed(2)} A`;
+                    powerValueEl.textContent = `${data.power.toFixed(0)} W`;
+                    
+                    voltageDialEl.style.setProperty('--angle', `${(data.voltage / 300) * 360}deg`);
+                    currentDialEl.style.setProperty('--angle', `${(data.current / 10) * 360}deg`);
+                    powerDialEl.style.setProperty('--angle', `${(data.power / 2000) * 360}deg`);
+
+                    // Use classList.toggle for a cleaner way to add/remove the 'active' class
+                    overVoltageWarningEl.classList.toggle('active', data.over_voltage);
+                    overLoadWarningEl.classList.toggle('active', data.over_load_details);
+                }
+            })
+            .catch(error => {
+                // This will catch the "Not Found" error gracefully
+                // and show other errors in the browser console.
+                console.warn('Dashboard refresh notice:', error);
+            });
+    }
+
+    // --- Event Handling ---
+    motorSelector.addEventListener('change', fetchAndUpdateDashboard);
+    setInterval(fetchAndUpdateDashboard, 2000); // Set the 2-second refresh timer
+    
+    // Fetch initial data if a motor is selected on page load
+    if (motorSelector.value) {
+        fetchAndUpdateDashboard();
+    }
+});
+</script>
 {% endblock %}
