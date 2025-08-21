@@ -4,17 +4,31 @@ from flask.cli import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
+import logging
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
-load_dotenv()
+logging.basicConfig(level=logging.INFO)
+
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = os.getenv('SECRET_KEY')
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
+
+load_dotenv()
 
 # Configure database (fallback to sqlite for local testing)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
+VALID_API_KEY = os.getenv('VALID_API_KEY')
 
 # --- Database Models ---
 class User(db.Model):
@@ -22,8 +36,9 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(512), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    # Note: Removed unused role and last_login for simplicity
-
+    role = db.Column(db.String(20), default='Student')  # Default role to 'Student'
+    last_login = db.Column(db.DateTime, nullable=True)
+ 
 class MotorData(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     motor_id = db.Column(db.String(50), nullable=False, index=True)
@@ -58,7 +73,7 @@ class MotorData(db.Model):
 def home():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
-    return render_template('login.html')
+    return render_template('index.html')
 
 @app.route('/dashboard')
 def dashboard():
@@ -136,33 +151,57 @@ def get_graph_data():
 
     return jsonify({'x_values': x_values, 'y_values': y_values})
 
-@app.route('/add_data', methods=['GET'])
+@app.route('/add_data', methods=['POST'])
 def add_data():
+    # --- Your excellent authentication ---
+    request_api_key = request.headers.get('X-API-KEY')
+    if not request_api_key or request_api_key != VALID_API_KEY:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Invalid JSON body'}), 400
+    
+    # --- Your excellent validation ---
+    required_fields = ['motor_id', 'voltage', 'current', 'power', 'speed', 'torque', 'field_current']
+    if not all(key in data for key in required_fields):
+        return jsonify({'error': 'Missing one or more required fields'}), 400
+
     try:
+        # Use the 'data' variable you already created
         new_data = MotorData(
-            motor_id=request.args.get('motor_id'),
-            voltage=float(request.args.get('voltage')),
-            current=float(request.args.get('current')),
-            power=float(request.args.get('power')),
-            speed=float(request.args.get('speed')),
-            torque=float(request.args.get('torque')),
-            field_current=float(request.args.get('field_current')),
-            over_voltage=request.args.get('over_voltage', 'false').lower() == 'true',
-            over_load_details=request.args.get('over_load_details', 'false').lower() == 'true'
+            motor_id=data.get('motor_id'),
+            voltage=float(data.get('voltage')),
+            current=float(data.get('current')),
+            power=float(data.get('power')),
+            speed=float(data.get('speed')),
+            torque=float(data.get('torque')),
+            field_current=float(data.get('field_current')),
+            over_voltage=str(data.get('over_voltage', False)).lower() == 'true',
+            over_load_details=str(data.get('over_load_details', False)).lower() == 'true'
         )
         db.session.add(new_data)
         db.session.commit()
-        return 'Data added successfully', 200
-    except (TypeError, ValueError, AttributeError) as e:
-        return f'Error adding data: Missing or invalid parameter. {e}', 400
+        
+        # POLISH #1: Return a JSON response with a 201 status code
+        return jsonify({'message': 'Data added successfully'}), 201
+
+    except (TypeError, ValueError) as e:
+        # POLISH #2: Rollback the session and hide the raw error
+        db.session.rollback()
+        logging.error(f"Error processing data submission: {e}") # Log the actual error for your records
+        return jsonify({'error': 'Invalid data format for one or more fields.'}), 400
 
 # --- Authentication Routes ---
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
 def login():
     if request.method == 'POST':
         user = User.query.filter_by(username=request.form['username']).first()
         if user and check_password_hash(user.password_hash, request.form['password']):
             session['user_id'] = user.id
+            user.last_login = datetime.utcnow()
+            db.session.commit()
             flash('Login successful!', 'success')
             return redirect(url_for('dashboard'))
         flash('Invalid username or password', 'danger')
@@ -171,13 +210,42 @@ def login():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        # Add checks for existing user/email and password complexity here
-        hashed_password = generate_password_hash(request.form['password'])
-        new_user = User(username=request.form['username'], email=request.form['email'], password_hash=hashed_password)
-        db.session.add(new_user)
-        db.session.commit()
-        flash('Registration successful! Please log in.', 'success')
-        return redirect(url_for('login'))
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        role = request.form.get('role', 'Student')  # Default role to 'Student'
+
+        # --- SOLUTION: Add these validation blocks ---
+        if not username or not email or not password:
+            flash('All fields are required.', 'danger')
+            return render_template('register.html')
+
+        if User.query.filter_by(username=username).first():
+            flash('Username already exists. Please choose another.', 'danger')
+            return render_template('register.html')
+
+        if User.query.filter_by(email=email).first():
+            flash('An account with that email already exists.', 'danger')
+            return render_template('register.html')
+
+        if len(password) < 8:
+            flash('Password must be at least 8 characters long.', 'danger')
+            return render_template('register.html')
+        # --- End of validation ---
+
+        hashed_password = generate_password_hash(password)
+        new_user = User(username=username, email=email, password_hash=hashed_password, role=role,last_login=datetime.utcnow())
+
+        try:
+            db.session.add(new_user)
+            db.session.commit()
+            flash('Registration successful! Please log in.', 'success')
+            return redirect(url_for('login'))
+        except Exception as e:
+            db.session.rollback()
+            logging.error(f"Error during registration: {e}")
+            flash('An error occurred during registration. Please try again.', 'danger')
+
     return render_template('register.html')
 
 @app.route('/logout')

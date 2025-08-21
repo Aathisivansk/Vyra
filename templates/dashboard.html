@@ -73,25 +73,20 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const motorSelector = document.getElementById('motorSelector');
-    // Early exit if the selector isn't on the page
     if (!motorSelector) return;
     
     function fetchAndUpdateDashboard() {
         const motorId = motorSelector.value;
-        if (!motorId) return; // Don't fetch if no motor is selected
+        if (!motorId) return;
 
         fetch(`/api/motor_data/${motorId}`)
             .then(response => {
-                // Check if the server response is OK (e.g., status 200).
-                // If not (e.g., a 404 error), stop and reject the promise.
                 if (!response.ok) {
                     return Promise.reject(`API returned an error: ${response.statusText}`);
                 }
-                // If the response is OK, parse it as JSON.
                 return response.json();
             })
             .then(data => {
-                // This code will ONLY run if the fetch was successful.
                 const voltageValueEl = document.getElementById('voltageValue');
                 const currentValueEl = document.getElementById('currentValue');
                 const powerValueEl = document.getElementById('powerValue');
@@ -101,33 +96,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 const overVoltageWarningEl = document.getElementById('overVoltageWarning');
                 const overLoadWarningEl = document.getElementById('overLoadWarning');
 
-                // Check if all elements exist before trying to update them
                 if (voltageValueEl && currentValueEl && powerValueEl && voltageDialEl && currentDialEl && powerDialEl && overVoltageWarningEl && overLoadWarningEl) {
                     voltageValueEl.textContent = `${data.voltage.toFixed(1)} V`;
                     currentValueEl.textContent = `${data.current.toFixed(2)} A`;
                     powerValueEl.textContent = `${data.power.toFixed(0)} W`;
                     
-                    voltageDialEl.style.setProperty('--angle', `${(data.voltage / 300) * 360}deg`);
-                    currentDialEl.style.setProperty('--angle', `${(data.current / 10) * 360}deg`);
-                    powerDialEl.style.setProperty('--angle', `${(data.power / 2000) * 360}deg`);
+                    // --- CORRECTED: Using variables passed from Flask ---
+                    voltageDialEl.style.setProperty('--angle', `${(data.voltage / 300 * 360)}deg`);
+                    currentDialEl.style.setProperty('--angle', `${(data.current / 30 * 360)}deg`);
+                    powerDialEl.style.setProperty('--angle', `${(data.power / 2000 * 360)}deg`);
 
-                    // Use classList.toggle for a cleaner way to add/remove the 'active' class
                     overVoltageWarningEl.classList.toggle('active', data.over_voltage);
                     overLoadWarningEl.classList.toggle('active', data.over_load_details);
                 }
             })
             .catch(error => {
-                // This will catch the "Not Found" error gracefully
-                // and show other errors in the browser console.
                 console.warn('Dashboard refresh notice:', error);
             });
     }
 
     // --- Event Handling ---
     motorSelector.addEventListener('change', fetchAndUpdateDashboard);
-    setInterval(fetchAndUpdateDashboard, 2000); // Set the 2-second refresh timer
+    setInterval(fetchAndUpdateDashboard, 2000);
     
-    // Fetch initial data if a motor is selected on page load
     if (motorSelector.value) {
         fetchAndUpdateDashboard();
     }

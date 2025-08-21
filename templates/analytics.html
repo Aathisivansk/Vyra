@@ -32,7 +32,6 @@
         <div class="col-md-3">
             <label for="xAxisSelect" class="form-label">X-Axis (Horizontal)</label>
             <select id="xAxisSelect" class="form-select">
-                <option value="timestamp">Time</option>
                 <option value="current">Current (A)</option>
                 <option value="field_current">Field Current (A)</option>
                 <option value="speed" selected>Speed (RPM)</option>
@@ -52,8 +51,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/date-fns@2.30.0/dist/date-fns.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.1/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
@@ -90,38 +87,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     y: data.y_values[index]
                 }));
 
-                // Dynamically configure the scales based on x-axis selection
-                const scalesConfig = {
-                    y: {
-                        title: { display: true, text: yAxisLabel, color: '#00ffff' },
-                        ticks: { color: '#e0e0e0' },
-                        grid: { color: 'rgba(0, 255, 255, 0.2)' }
-                    }
-                };
-
-                if (xAxis === 'timestamp') {
-                    // Use a time-series axis if 'timestamp' is selected
-                    scalesConfig.x = {
-                        type: 'time',
-                        time: {
-                            unit: 'second',
-                            displayFormats: { second: 'HH:mm:ss' },
-                            tooltipFormat: 'HH:mm:ss'
-                        },
-                        title: { display: true, text: xAxisLabel, color: '#00ffff' },
-                        ticks: { color: '#e0e0e0' },
-                        grid: { color: 'rgba(0, 255, 255, 0.1)' }
-                    };
-                } else {
-                    // Use a standard linear axis for all other numerical data
-                    scalesConfig.x = {
-                        type: 'linear',
-                        title: { display: true, text: xAxisLabel, color: '#00ffff' },
-                        ticks: { color: '#e0e0e0' },
-                        grid: { color: 'rgba(0, 255, 255, 0.1)' }
-                    };
-                }
-
                 motorChart = new Chart(ctx, {
                     type: 'scatter',
                     data: {
@@ -137,7 +102,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        scales: scalesConfig, // Use our dynamic scales configuration
+                        // Simplified scales for number-vs-number plots
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                title: { display: true, text: xAxisLabel, color: '#00ffff' },
+                                ticks: { color: '#e0e0e0' },
+                                grid: { color: 'rgba(0, 255, 255, 0.1)' }
+                            },
+                            y: {
+                                title: { display: true, text: yAxisLabel, color: '#00ffff' },
+                                ticks: { color: '#e0e0e0' },
+                                grid: { color: 'rgba(0, 255, 255, 0.2)' }
+                            }
+                        },
                         plugins: {
                             legend: { labels: { color: '#e0e0e0' } }
                         }

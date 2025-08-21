@@ -20,7 +20,7 @@
             {% endif %}
         {% endwith %}
         <h2 class="mb-4">Login</h2>
-        <form method="POST" action="/login">
+        <form method="POST" action="{{ url_for('login') }}">
             <div class="mb-3">
                 <label for="username" class="form-label">Username</label>
                 <input type="text" class="form-control" id="username" name="username" required>
@@ -30,7 +30,7 @@
                 <input type="password" class="form-control" id="password" name="password" required>
             </div>
             <button type="submit" class="btn btn-primary">Login</button>
-            <a href="/register" class="btn btn-link">Register</a>
+            <a href="{{ url_for('register') }}" class="btn btn-link">Register</a>
         </form>
     </div>
 </div>
