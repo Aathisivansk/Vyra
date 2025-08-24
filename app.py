@@ -7,6 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import logging
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from authlib.integrations.flask_client import OAuth
 
 logging.basicConfig(level=logging.INFO)
 
@@ -28,13 +29,30 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
+oauth = OAuth(app)
+google = oauth.register(
+    name='google',
+    client_id=os.getenv("GOOGLE_CLIENT_ID"),
+    client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={'scope': 'openid email profile'},
+    # This claims_options block is the critical fix for the 'iss' error
+    claims_options={
+        'iss': {
+            'essential': True,
+            'values': ['https://accounts.google.com', 'accounts.google.com']
+        }
+    }
+)
+
+# Load the API key from environment variables
 VALID_API_KEY = os.getenv('VALID_API_KEY')
 
 # --- Database Models ---
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(512), nullable=False)
+    username = db.Column(db.String(80), nullable=False)
+    password_hash = db.Column(db.String(512), nullable=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     role = db.Column(db.String(20), default='Student')  # Default role to 'Student'
     last_login = db.Column(db.DateTime, nullable=True)
@@ -75,6 +93,34 @@ def home():
         return redirect(url_for('dashboard'))
     return render_template('index.html')
 
+@app.route('/google/login')
+def google_login():
+    # The URL in your app that Google will redirect to after the user signs in
+    redirect_uri = url_for('google_callback', _external=True)
+    return google.authorize_redirect(redirect_uri)
+
+@app.route('/google/callback')
+def google_callback():
+    token = google.authorize_access_token()
+    user_info = token['userinfo']
+    user_email = user_info['email']
+
+    user = User.query.filter_by(email=user_email).first()
+    if not user:
+        user = User(
+            email=user_email,
+            username=user_info.get('name', user_email), # Use name, fallback to email
+            password_hash=None,
+            last_login=datetime.utcnow()
+        )
+        db.session.add(user)
+        db.session.commit()
+
+    session.clear()
+    session['user_id'] = user.id
+    flash('Successfully logged in with Google!', 'success')
+    return redirect(url_for('dashboard'))
+
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
@@ -110,9 +156,7 @@ def get_motor_data(motor_id):
     if latest_data:
         # Create a JSON response from our data
         response = make_response(jsonify(latest_data.to_dict()))
-        
-        # --- THIS IS THE KEY FIX ---
-        # Add headers to the response to prevent caching
+        response.headers['Content-Type'] = 'application/json'
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'

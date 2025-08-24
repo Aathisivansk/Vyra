@@ -191,3 +191,29 @@ h1, h2, h3 {
     box-shadow: 0 0 15px rgba(0, 255, 255, 0.4), 0 0 5px rgba(0, 255, 255, 0.6) inset;
     clip-path: polygon(0% 15px, 15px 0%, 100% 0%, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0% 100%);
 }
+
+/* --- Navbar Profile Link Style --- */
+.navbar-profile {
+    font-weight: bold;
+    color: #fbc531 !important; /* Yellow / Gold color */
+    text-shadow: 0 0 8px #fbc531;
+    border: 1px solid transparent;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+}
+
+.navbar-profile:hover {
+    color: #fff !important;
+    border-color: #fbc531;
+    background-color: rgba(251, 197, 49, 0.1);
+}
+
+/* Also add styles for the profile page details */
+.profile-details p {
+    font-size: 1.1rem;
+    padding: 10px;
+    border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+}
+.profile-details p:last-child {
+    border-bottom: none;
+}

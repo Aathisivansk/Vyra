@@ -7,31 +7,49 @@
 {% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
+<div class="container d-flex align-items-center justify-content-center" style="min-height: calc(100vh - 80px);">
+    <div class="col-md-6 col-lg-4">
+        <div class="content-box">
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} text-center" role="alert">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} mt-3" role="alert">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-        <h2 class="mb-4">Login</h2>
-        <form method="POST" action="{{ url_for('login') }}">
-            <div class="mb-3">
-                <label for="username" class="form-label">Username</label>
-                <input type="text" class="form-control" id="username" name="username" required>
+            <h2 class="text-center mb-4">Login</h2>
+
+            <div class="d-grid mb-4">
+                <a href="{{ url_for('google_login') }}" class="btn btn-google" role="button">
+                    <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google logo" width="20" height="20">
+                    Sign in with Google
+                </a>
             </div>
-            <div class="mb-3">
-                <label for="password" class="form-label">Password</label>
-                <input type="password" class="form-control" id="password" name="password" required>
+
+            <p class="text-center text-muted" style="font-family: 'Orbitron', sans-serif;">OR</p>
+
+            <form method="POST" action="{{ url_for('login') }}">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="username" name="username" required>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" class="form-control" id="password" name="password" required>
+                </div>
+                <div class="d-grid mt-4">
+                    <button type="submit" class="btn btn-primary">Login with Email</button>
+                </div>
+            </form>
+            
+            <div class="text-center mt-3">
+                <small>Don't have an account? <a href="{{ url_for('register') }}" class="btn-link">Sign Up</a></small>
             </div>
-            <button type="submit" class="btn btn-primary">Login</button>
-            <a href="{{ url_for('register') }}" class="btn btn-link">Register</a>
-        </form>
+        </div>
     </div>
 </div>
 {% endblock %}
