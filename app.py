@@ -15,7 +15,6 @@ import uuid # For unique filenames
 logging.basicConfig(level=logging.INFO)
 
 
-
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 
@@ -87,7 +86,6 @@ class MotorData(db.Model):
     power = db.Column(db.Float, nullable=False)
     speed = db.Column(db.Float, nullable=True)
     torque = db.Column(db.Float, nullable=True)
-    field_current = db.Column(db.Float, nullable=True)
     over_voltage = db.Column(db.Boolean, nullable=False, default=False)
     over_load_details = db.Column(db.Boolean, nullable=True, default=False)
     def to_dict(self):
@@ -100,7 +98,6 @@ class MotorData(db.Model):
             'power': self.power,
             'speed': self.speed,
             'torque': self.torque,
-            'field_current': self.field_current,
             'over_voltage': self.over_voltage,
             'over_load_details': self.over_load_details
         }
@@ -291,8 +288,8 @@ def get_graph_data():
     motor_id = request.args.get('motor_id')
     x_axis_param = request.args.get('x_axis', 'timestamp')
     y_axis_param = request.args.get('y_axis', 'voltage')
-    
-    ALLOWED_AXES = ['timestamp', 'voltage', 'current', 'power', 'speed', 'torque', 'field_current']
+
+    ALLOWED_AXES = ['timestamp', 'voltage', 'current', 'power', 'speed', 'torque']
     if x_axis_param not in ALLOWED_AXES or y_axis_param not in ALLOWED_AXES:
         return jsonify({'error': 'Invalid axis parameters'}), 400
 
@@ -327,7 +324,7 @@ def add_data():
         return jsonify({'error': 'Invalid JSON body'}), 400
     
     # --- Your excellent validation ---
-    required_fields = ['motor_id', 'voltage', 'current', 'power', 'speed', 'torque', 'field_current']
+    required_fields = ['motor_id', 'voltage', 'current', 'power', 'speed', 'torque']
     if not all(key in data for key in required_fields):
         return jsonify({'error': 'Missing one or more required fields'}), 400
 
@@ -340,7 +337,6 @@ def add_data():
             power=float(data.get('power')),
             speed=float(data.get('speed')),
             torque=float(data.get('torque')),
-            field_current=float(data.get('field_current')),
             over_voltage=str(data.get('over_voltage', False)).lower() == 'true',
             over_load_details=str(data.get('over_load_details', False)).lower() == 'true'
         )
