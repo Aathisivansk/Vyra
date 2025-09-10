@@ -11,10 +11,12 @@ from flask_limiter.util import get_remote_address
 from authlib.integrations.flask_client import OAuth
 from werkzeug.utils import secure_filename
 import uuid # For unique filenames
+from pathlib import Path 
+from dotenv import load_dotenv
 
 logging.basicConfig(level=logging.INFO)
 
-
+basedir = Path(__file__).parent
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 
@@ -28,8 +30,12 @@ limiter = Limiter(
     storage_uri="memory://"
 )
 
-load_dotenv()
+# load_dotenv()
 
+env_path = "E:/IDEAS IOT Dashboard/IDEAS-IOT/.env"
+load_dotenv(dotenv_path=env_path)
+
+print(f"✅ DATABASE_URL loaded: {os.getenv('DATABASE_URL')}")
 # Configure database (fallback to sqlite for local testing)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -250,7 +256,7 @@ def dashboard():
         initial_data = MotorData.query.filter_by(motor_id=motor_list[0]).order_by(MotorData.timestamp.desc()).first()
 
     return render_template('dashboard.html', motors=motor_list, data=initial_data, max_voltage=300.0, max_current=10.0, max_power=2000.0)
-
+'''
 @app.route('/analytics')
 def analytics():
     if 'user_id' not in session:
@@ -260,7 +266,7 @@ def analytics():
     motor_id_tuples = db.session.query(MotorData.motor_id).distinct().order_by(MotorData.motor_id).all()
     motor_list = [m[0] for m in motor_id_tuples]
     return render_template('analytics.html', motors=motor_list)
-
+'''
 
 # --- API Routes ---
 @app.route('/api/motor_data/<string:motor_id>')
