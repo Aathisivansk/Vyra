@@ -11,12 +11,10 @@ from flask_limiter.util import get_remote_address
 from authlib.integrations.flask_client import OAuth
 from werkzeug.utils import secure_filename
 import uuid # For unique filenames
-from pathlib import Path 
 from dotenv import load_dotenv
 
 logging.basicConfig(level=logging.INFO)
 
-basedir = Path(__file__).parent
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 
@@ -30,18 +28,17 @@ limiter = Limiter(
     storage_uri="memory://"
 )
 
-# load_dotenv()
-
 env_path = "E:/IDEAS IOT Dashboard/IDEAS-IOT/.env"
 load_dotenv(dotenv_path=env_path)
 
 print(f"✅ DATABASE_URL loaded: {os.getenv('DATABASE_URL')}")
-# Configure database (fallback to sqlite for local testing)
+
+
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # --- Add App Configuration for File Uploads ---
-app.config['UPLOAD_FOLDER'] = 'static/avatars'
+app.config['UPLOAD_FOLDER'] = 'E:/IDEAS IOT Dashboard/IDEAS-IOT/static/avatars'
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
 
 db = SQLAlchemy(app)
@@ -90,8 +87,6 @@ class MotorData(db.Model):
     voltage = db.Column(db.Float, nullable=False)
     current = db.Column(db.Float, nullable=False)
     power = db.Column(db.Float, nullable=False)
-    speed = db.Column(db.Float, nullable=True)
-    torque = db.Column(db.Float, nullable=True)
     over_voltage = db.Column(db.Boolean, nullable=False, default=False)
     over_load_details = db.Column(db.Boolean, nullable=True, default=False)
     def to_dict(self):
@@ -102,8 +97,6 @@ class MotorData(db.Model):
             'voltage': self.voltage,
             'current': self.current,
             'power': self.power,
-            'speed': self.speed,
-            'torque': self.torque,
             'over_voltage': self.over_voltage,
             'over_load_details': self.over_load_details
         }
@@ -161,15 +154,22 @@ def edit_profile():
     if 'avatar' in request.files:
         file = request.files['avatar']
         if file and file.filename != '' and allowed_file(file.filename):
+            # --- START: ADD THIS BLOCK ---
+            upload_folder = app.config['UPLOAD_FOLDER']
+            os.makedirs(upload_folder, exist_ok=True) # This creates the folder if it's missing
+            # --- END: ADD THIS BLOCK ---
+
             filename = secure_filename(file.filename)
             unique_filename = str(uuid.uuid4()) + os.path.splitext(filename)[1]
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+            # Use the local variable for the path
+            file_path = os.path.join(upload_folder, unique_filename)
             file.save(file_path)
             user.avatar = unique_filename
             flash('Avatar updated successfully!', 'success')
     
     db.session.commit()
     return redirect(url_for('profile'))
+
 
 @app.route('/profile/password', methods=['POST'])
 def change_password():
@@ -256,17 +256,6 @@ def dashboard():
         initial_data = MotorData.query.filter_by(motor_id=motor_list[0]).order_by(MotorData.timestamp.desc()).first()
 
     return render_template('dashboard.html', motors=motor_list, data=initial_data, max_voltage=300.0, max_current=10.0, max_power=2000.0)
-'''
-@app.route('/analytics')
-def analytics():
-    if 'user_id' not in session:
-        flash('Please log in to access this page.', 'warning')
-        return redirect(url_for('login'))
-    
-    motor_id_tuples = db.session.query(MotorData.motor_id).distinct().order_by(MotorData.motor_id).all()
-    motor_list = [m[0] for m in motor_id_tuples]
-    return render_template('analytics.html', motors=motor_list)
-'''
 
 # --- API Routes ---
 @app.route('/api/motor_data/<string:motor_id>')
@@ -287,36 +276,6 @@ def get_motor_data(motor_id):
     else:
         return jsonify({'error': f'No data found for {motor_id}'}), 404
 
-@app.route('/api/graph_data')
-def get_graph_data():
-    if 'user_id' not in session: return jsonify({'error': 'Unauthorized'}), 401
-    
-    motor_id = request.args.get('motor_id')
-    x_axis_param = request.args.get('x_axis', 'timestamp')
-    y_axis_param = request.args.get('y_axis', 'voltage')
-
-    ALLOWED_AXES = ['timestamp', 'voltage', 'current', 'power', 'speed', 'torque']
-    if x_axis_param not in ALLOWED_AXES or y_axis_param not in ALLOWED_AXES:
-        return jsonify({'error': 'Invalid axis parameters'}), 400
-
-    x_axis_col = getattr(MotorData, x_axis_param)
-    y_axis_col = getattr(MotorData, y_axis_param)
-
-    sort_column = MotorData.timestamp if x_axis_param == 'timestamp' else x_axis_col
-
-    graph_data = db.session.query(x_axis_col, y_axis_col)\
-        .filter(MotorData.motor_id == motor_id, x_axis_col.isnot(None), y_axis_col.isnot(None))\
-        .order_by(sort_column.asc()).limit(200).all()
-
-    if not graph_data: return jsonify({'x_values': [], 'y_values': []})
-        
-    x_values, y_values = zip(*graph_data)
-
-    if x_axis_param == 'timestamp':
-        x_values = [ts.isoformat() for ts in x_values]
-
-    return jsonify({'x_values': x_values, 'y_values': y_values})
-
 @app.route('/add_data', methods=['POST'])
 @csrf.exempt
 def add_data():
@@ -330,7 +289,7 @@ def add_data():
         return jsonify({'error': 'Invalid JSON body'}), 400
     
     # --- Your excellent validation ---
-    required_fields = ['motor_id', 'voltage', 'current', 'power', 'speed', 'torque']
+    required_fields = ['motor_id', 'voltage', 'current', 'power']
     if not all(key in data for key in required_fields):
         return jsonify({'error': 'Missing one or more required fields'}), 400
 
@@ -341,8 +300,6 @@ def add_data():
             voltage=float(data.get('voltage')),
             current=float(data.get('current')),
             power=float(data.get('power')),
-            speed=float(data.get('speed')),
-            torque=float(data.get('torque')),
             over_voltage=str(data.get('over_voltage', False)).lower() == 'true',
             over_load_details=str(data.get('over_load_details', False)).lower() == 'true'
         )
