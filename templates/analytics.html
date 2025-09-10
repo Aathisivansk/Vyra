@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Motor Analytics | IDEAS IOT{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Motor Analytics 📈</h2>
+    
+    <div class="row mb-4 align-items-end">
+        <div class="col-md-3">
+            <label for="motorSelector" class="form-label">Select Motor</label>
+            <select id="motorSelector" class="form-select">
+                {% if motors %}
+                    {% for motor in motors %}
+                    <option value="{{ motor }}">{{ motor }}</option>
+                    {% endfor %}
+                {% else %}
+                    <option disabled>No Motors Found</option>
+                {% endif %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="yAxisSelect" class="form-label">Y-Axis (Vertical)</label>
+            <select id="yAxisSelect" class="form-select">
+                <option value="voltage">Voltage (V)</option>
+                <option value="current">Current (A)</option>
+                <option value="power">Power (W)</option>
+                <option value="speed">Speed (RPM)</option>
+                <option value="torque" selected>Torque (Nm)</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="xAxisSelect" class="form-label">X-Axis (Horizontal)</label>
+            <select id="xAxisSelect" class="form-select">
+                <option value="current">Current (A)</option>
+                <option value="speed" selected>Speed (RPM)</option>
+                <option value="torque">Torque (Nm)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="chart-container">
+                <canvas id="motorChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const motorSelector = document.getElementById('motorSelector');
+    const xAxisSelect = document.getElementById('xAxisSelect');
+    const yAxisSelect = document.getElementById('yAxisSelect');
+    const ctx = document.getElementById('motorChart').getContext('2d');
+    let motorChart;
+
+    /**
+     * Reads all dropdowns, fetches data, and redraws the chart.
+     */
+    function fetchAndDrawChart() {
+        const motorId = motorSelector.value;
+        const xAxis = xAxisSelect.value;
+        const yAxis = yAxisSelect.value;
+        const yAxisLabel = yAxisSelect.options[yAxisSelect.selectedIndex].text;
+        const xAxisLabel = xAxisSelect.options[xAxisSelect.selectedIndex].text;
+
+        if (!motorId || !xAxis || !yAxis) return;
+        
+        const apiUrl = `/api/graph_data?motor_id=${motorId}&x_axis=${xAxis}&y_axis=${yAxis}`;
+
+        fetch(apiUrl)
+            .then(response => response.ok ? response.json() : Promise.reject('API Error'))
+            .then(data => {
+                if (motorChart) {
+                    motorChart.destroy();
+                }
+                
+                const chartData = data.x_values.map((value, index) => ({
+                    x: value,
+                    y: data.y_values[index]
+                }));
+
+                motorChart = new Chart(ctx, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: `${yAxisLabel} vs. ${xAxisLabel} for ${motorId}`,
+                            data: chartData,
+                            borderColor: '#00ffff',
+                            backgroundColor: '#00ffff',
+                            showLine: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        // Simplified scales for number-vs-number plots
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                title: { display: true, text: xAxisLabel, color: '#00ffff' },
+                                ticks: { color: '#e0e0e0' },
+                                grid: { color: 'rgba(0, 255, 255, 0.1)' }
+                            },
+                            y: {
+                                title: { display: true, text: yAxisLabel, color: '#00ffff' },
+                                ticks: { color: '#e0e0e0' },
+                                grid: { color: 'rgba(0, 255, 255, 0.2)' }
+                            }
+                        },
+                        plugins: {
+                            legend: { labels: { color: '#e0e0e0' } }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error('Error fetching chart data:', error));
+    }
+
+    // Add event listeners to all three dropdowns to redraw the chart on change
+    motorSelector.addEventListener('change', fetchAndDrawChart);
+    xAxisSelect.addEventListener('change', fetchAndDrawChart);
+    yAxisSelect.addEventListener('change', fetchAndDrawChart);
+
+    // Initial chart draw on page load
+    if (motorSelector.value) {
+        fetchAndDrawChart();
+    }
+});
+</script>
+{% endblock %}

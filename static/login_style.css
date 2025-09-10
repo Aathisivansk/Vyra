@@ -105,3 +105,34 @@ h2 {
     text-shadow: 0 0 5px #ff00ff;
     text-decoration: underline;
 }
+
+/* --- Google Button Style --- */
+/* --- Themed Google Button Style --- */
+.btn-google {
+    background-color: transparent;
+    border: 2px solid #e0e0e0; /* Neutral white/gray border */
+    color: #e0e0e0;
+    box-shadow: 0 0 8px rgba(224, 224, 224, 0.5); /* Subtle white glow */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-family: 'Orbitron', sans-serif;
+    transition: all 0.3s ease;
+}
+
+.btn-google:hover {
+    background-color: #e0e0e0cf;
+    color: #0a0a14; /* Invert text color to the dark background color */
+    box-shadow: 0 0 15px rgba(224, 224, 224, 0.8); /* Brighter glow on hover */
+}
+
+/* Optional: Make the Google logo image slightly brighter on hover */
+.btn-google:hover img {
+    filter: brightness(1.1);
+}
+
+.btn-google img {
+    filter: drop-shadow(0 0 1px transparent);
+    background-color: transparent;
+}

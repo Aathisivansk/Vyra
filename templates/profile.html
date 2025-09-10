@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}User Profile{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <h2 class="mb-4">👤 User Profile</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }} text-center" role="alert">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="content-box">
+                <h3 class="mb-3">Edit Details</h3>
+                <form action="{{ url_for('edit_profile') }}" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3 text-center">
+                        <img src="{{ url_for('static', filename='avatars/' + user.avatar) }}" alt="User Avatar" class="profile-avatar mb-2">
+                        <label for="avatar" class="form-label">Change Avatar</label>
+                        <input class="form-control" type="file" id="avatar" name="avatar">
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" value="{{ user.email }}" disabled>
+                    </div>
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username" value="{{ user.username }}">
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            {% if user.password_hash %}
+            <div class="content-box mb-4">
+                <h3 class="mb-3">Change Password</h3>
+                <form action="{{ url_for('change_password') }}" method="POST">
+                    <div class="mb-3">
+                        <input type="password" class="form-control" name="current_password" placeholder="Current Password" required>
+                    </div>
+                    <div class="mb-3">
+                        <input type="password" class="form-control" name="new_password" placeholder="New Password" required>
+                    </div>
+                    <div class="mb-3">
+                        <input type="password" class="form-control" name="confirm_password" placeholder="Confirm New Password" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Update Password</button>
+                    </div>
+                </form>
+            </div>
+            {% endif %}
+
+            <div class="content-box">
+                <h3 class="mb-3">Recent Logins</h3>
+                <ul class="login-history-list">
+                    {% for login in login_history %}
+                    <li>
+                        <span>{{ login.timestamp.strftime('%b %d, %Y at %H:%M') }}</span>
+                        <span class="ip-address">From IP: {{ login.ip_address }}</span>
+                    </li>
+                    {% else %}
+                    <li>No recent logins found.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="content-box danger-zone">
+                <h3 class="mb-3">Danger Zone</h3>
+                <form action="{{ url_for('delete_account') }}" method="POST" onsubmit="return confirm('Are you absolutely sure you want to delete your account? This action cannot be undone.');">
+                    <p>Deleting your account will permanently remove all your data.</p>
+                    {% if user.password_hash %}
+                    <div class="mb-3">
+                        <input type="password" name="password_confirm" class="form-control" placeholder="Enter your password to confirm" required>
+                    </div>
+                    {% endif %}
+                    <button type="submit" class="btn btn-danger">Delete My Account</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
