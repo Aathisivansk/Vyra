@@ -24,7 +24,7 @@ csrf = CSRFProtect(app)
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=["200 per day", "50 per hour"],
+    default_limits=["20000000 per day", "50000 per hour"],
     storage_uri="memory://"
 )
 
@@ -383,4 +383,4 @@ def logout():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+    app.run(host = "0.0.0.0",port=5000,debug=True)

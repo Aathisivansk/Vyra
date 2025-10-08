@@ -76,15 +76,15 @@ void sendDataToServer(float voltage, float current, float power, bool isOverload
 void readAndProcessData()
 {
     emon.calcVI(20, 2000);
-    bool isOverload = (emon.Irms > 0.3);
+    bool isOverload = (emon.Irms > 3);
 
     if (isOverload) {
+        digitalWrite(RELAY_PIN, HIGH);
         lcd.clear();
         lcd.setCursor(3, 0);
         lcd.print("OVERLOAD DETECTED");
         lcd.setCursor(5, 1);
         lcd.print("MOTOR IS OFF");
-        digitalWrite(RELAY_PIN, HIGH);
     } else {
         digitalWrite(RELAY_PIN, LOW);
         
@@ -99,10 +99,10 @@ void readAndProcessData()
         lcd.print(emon.Irms, 4);
         lcd.print(" A");
 
-        lcd.setCursor(0, 2);
-        lcd.print("Power: ");
-        lcd.print(emon.apparentPower, 4);
-        lcd.print(" W");
+        // lcd.setCursor(0, 2);
+        // lcd.print("Power: ");
+        // lcd.print(emon.apparentPower, 4);
+        // lcd.print(" W");
     }
     
     sendDataToServer(emon.Vrms, emon.Irms, emon.apparentPower, isOverload);
@@ -110,8 +110,9 @@ void readAndProcessData()
 
 void setup()
 {
+    // Start serial
     Serial.begin(115200);
-
+    // LCD initialization
     lcd.init();
     lcd.backlight();
     lcd.setCursor(3, 0);
@@ -120,13 +121,13 @@ void setup()
     lcd.print("OVERLOAD MONITOR");
     delay(2000);
     lcd.clear();
-
+    // Energy monitor initialization
     emon.voltage(VOLTAGE_PIN, V_CALIBRATION, 1.7);
     emon.current(CURRENT_PIN, CURR_CALIBRATION);
-
+    // Relay setup
     pinMode(RELAY_PIN, OUTPUT);
     digitalWrite(RELAY_PIN, LOW);
-
+    // Connection logic
     Serial.print("Connecting to ");
     Serial.println(ssid);
     WiFi.begin(ssid, pass);
@@ -137,12 +138,14 @@ void setup()
     Serial.println("\nWiFi connected!");
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
+    // Go to loop after connection
 }
 
 void loop()
 {
+    // Get initial time
     unsigned long currentMillis = millis();
-    if (currentMillis - previousMillis >= interval) {
+    if (currentMillis - previousMillis >= interval) {// repeat at set intervals (sample time fixed). if less than set sample, wait for sample time to cross
         previousMillis = currentMillis;
         readAndProcessData();
     }
