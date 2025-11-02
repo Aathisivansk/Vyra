@@ -24,7 +24,7 @@ csrf = CSRFProtect(app)
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=["20000000 per day", "50000 per hour"],
+    default_limits=["20000000 per day", "500000000 per hour"],
     storage_uri="memory://"
 )
 
@@ -32,7 +32,6 @@ env_path = "E:/IDEAS IOT Dashboard/IDEAS-IOT/.env"
 load_dotenv(dotenv_path=env_path)
 
 print(f"✅ DATABASE_URL loaded: {os.getenv('DATABASE_URL')}")
-
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
