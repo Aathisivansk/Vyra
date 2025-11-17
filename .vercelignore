@@ -1,0 +1,11 @@
+# .vercelignore
+*.pyc
+__pycache__/
+venv/
+env/
+.env
+.git/
+.gitignore
+*.mp4
+*.wav
+# Any other large static files you don't strictly need for the code to run
