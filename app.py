@@ -1,8 +1,10 @@
 from datetime import datetime
+import dotenv
 from flask import Flask, flash, redirect,render_template, request, session, url_for, jsonify, make_response
 from flask.cli import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import CSRFProtect
+from werkzeug.middleware.proxy_fix import ProxyFix
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
 import logging
@@ -16,10 +18,15 @@ from dotenv import load_dotenv
 logging.basicConfig(level=logging.INFO)
 
 # Load environment variables from a .env file if present
-env_path = "E:/IDEAS IOT Dashboard/IDEAS-IOT/.env"
-load_dotenv(dotenv_path=env_path)
+load_dotenv()
 
 app = Flask(__name__)
+
+# Tell Flask it is behind a proxy (Render/Nginx) so it can see the real IP and HTTPS status
+app.wsgi_app = ProxyFix(
+    app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
+)
+
 app.secret_key = os.getenv('SECRET_KEY')
 
 # --- Add CSRF Protection ---
@@ -34,11 +41,17 @@ limiter = Limiter(
 
 print(f"✅ DATABASE_URL loaded: {os.getenv('DATABASE_URL')}")
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+database_url = os.getenv('DATABASE_URL')
+# Fix for Render/Heroku using 'postgres://' but SQLAlchemy requiring 'postgresql://'
+if database_url and database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # --- Add App Configuration for File Uploads ---
-app.config['UPLOAD_FOLDER'] = 'E:/IDEAS IOT Dashboard/IDEAS-IOT/static/avatars'
+app.config['UPLOAD_FOLDER'] = '/static/avatars'
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
 
 db = SQLAlchemy(app)
