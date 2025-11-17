@@ -15,6 +15,10 @@ from dotenv import load_dotenv
 
 logging.basicConfig(level=logging.INFO)
 
+# Load environment variables from a .env file if present
+env_path = "E:/IDEAS IOT Dashboard/IDEAS-IOT/.env"
+load_dotenv(dotenv_path=env_path)
+
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 
@@ -27,9 +31,6 @@ limiter = Limiter(
     default_limits=["20000000 per day", "500000000 per hour"],
     storage_uri="memory://"
 )
-
-env_path = "E:/IDEAS IOT Dashboard/IDEAS-IOT/.env"
-load_dotenv(dotenv_path=env_path)
 
 print(f"✅ DATABASE_URL loaded: {os.getenv('DATABASE_URL')}")
 
@@ -99,6 +100,39 @@ class MotorData(db.Model):
             'over_voltage': self.over_voltage,
             'over_load_details': self.over_load_details
         }
+
+@app.after_request
+def add_security_headers(response):
+    
+    # 1. Content-Security-Policy (CSP)
+    # ---
+    # This is the most important one. It tells the browser to ONLY 
+    # load resources (scripts, styles, images) from your own domain ('self').
+    # This is a primary defense against XSS.
+    # (This is a basic policy; it can get very complex)
+    csp_policy = (
+        "default-src 'self'; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "img-src 'self' data: https://developers.google.com;"
+    )
+    response.headers['Content-Security-Policy'] = csp_policy
+    
+    # 2. Missing Anti-Clickjacking Header (X-Frame-Options)
+    # ---
+    # Prevents your site from being loaded in an <iframe> on another 
+    # website. This stops "Clickjacking" attacks.
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    
+    # 3. X-Content-Type-Options Header Missing
+    # ---
+    # Prevents the browser from "MIME sniffing" (guessing) the content type.
+    # If you upload a text file named "styles.css", the browser will
+    # treat it as text, not a stylesheet.
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    
+    return response
 
 
 # --- Main Page Routes ---
@@ -382,4 +416,4 @@ def logout():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(host = "0.0.0.0",port=5000,debug=True)
+    app.run(host = "0.0.0.0",port=5000,debug=False)
